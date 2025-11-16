@@ -93,8 +93,8 @@ async function bootstrap() {
             try {
               // If the config entry is a valid regex, use it directly
               return new RegExp(patternStr);
-            } catch {
-              // If not a valid regex, escape the string for exact match
+            } catch (e) {
+              Logger.debug(`Pattern '${patternStr}' is not a valid regex, treating as literal string`);
               return new RegExp(
                 `^${patternStr.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}$`,
                 'i',
