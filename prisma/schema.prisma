@@ -1,0 +1,267 @@
+// Prisma schema for gateway-backend
+// Defines User and Token models
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Roles {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+model User {
+  id             String   @id @default(uuid()) @db.Uuid
+  email          String?
+  firstName      String?
+  lastName       String?
+  phone          String?
+  avatar         String?
+  street         String?
+  city           String?
+  zipCode        String?
+  roles          Roles[]  @default([USER])
+  password       String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime?
+  producerId     String?  @db.Uuid
+  producer       Producer?
+
+  deliveryAddresses DeliveryAddress[]
+  gardens        Garden[]
+  activities     Activity[]
+  chatMessages   ChatMessage[]
+  chatSessions   ChatSession[]
+
+  @@map("User")
+}
+
+// Enums derived from your TypeScript definitions
+enum GardenType {
+  OPEN_AIR
+  GREENHOUSE
+  GLASSHOUSE
+}
+
+enum PlotStatus {
+  EMPTY
+  PLANTED
+  GROWING
+  HARVEST_READY
+}
+
+enum ActivityType {
+  LEASE
+  PLANTING
+  WATERING
+  FERTILIZING
+  PEST_CONTROL
+  WEEDING
+  HARVEST
+}
+
+enum Sender {
+  USER
+  BOT
+  PRODUCER
+}
+
+// Delivery address for User.deliveryAddress[]
+model DeliveryAddress {
+  id        String  @id @default(cuid())
+  userId    String  @db.Uuid
+  street    String
+  city      String
+  zipCode   String
+
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Producer {
+  id         String   @id @default(cuid())
+  name       String
+  specialty  String?
+  avatar     String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime?
+  userId     String?   @db.Uuid @unique
+
+  user       User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  templates  GardenTemplate[]
+  chatSessions ChatSession[]
+}
+
+model Vegetable {
+  id               String        @id @default(cuid())
+  name             String
+  price            Decimal
+  icon             String?
+  plantableMonths  Int[]
+  temperature      Float?
+  harvestMonths    Int[]
+  companions       String[]
+  incompatible      String[]
+  facts            String?
+  category         String?
+  backgroundImage  String?
+  growthTime       String?
+  season           String?
+  water            String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime?
+
+  growthStages     GrowthStage[]
+  plots            Plot[]
+  templateLinks    GardenVegetable[]
+}
+
+model GrowthStage {
+  id           String   @id @default(cuid())
+  vegetableId  String
+  name         String
+  days         String
+  icon         String?
+
+  vegetable    Vegetable @relation(fields: [vegetableId], references: [id], onDelete: Cascade)
+
+  @@index([vegetableId])
+}
+
+
+model Plot {
+  id          Int        @id @default(autoincrement())
+  gardenId    String
+  status      PlotStatus @default(EMPTY)
+  vegetableId String?
+  healthScore Int?
+  plantedDate DateTime?
+  progress    Int?
+
+  garden      Garden     @relation(fields: [gardenId], references: [id], onDelete: Cascade)
+  vegetable   Vegetable? @relation(fields: [vegetableId], references: [id], onDelete: SetNull)
+
+  @@index([gardenId])
+  @@index([vegetableId])
+}
+
+model Garden {
+  id          String   @id @default(cuid())
+  name        String
+  leaseDate   DateTime
+  userId      String?  @db.Uuid
+  cameraUrl   String?
+  // Optional link to the template this garden was created from
+  templateId  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime?
+
+  user        User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  template    GardenTemplate?      @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  chatMessages ChatMessage[]
+  plots       Plot[]
+  activities  Activity[]
+  chatSessions ChatSession[]
+
+  @@index([userId])
+  @@index([templateId])
+}
+
+// New: Producer-defined garden blueprint
+model GardenTemplate {
+  id           String   @id @default(cuid())
+  name         String
+  type         GardenType
+  location     String?
+  cameraUrlTemplate    String?
+  price        Decimal?
+  producerId   String?
+  maxInstances Int      @default(1)
+  defaultPlots Int      @default(9)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime?
+
+  producer     Producer?                 @relation(fields: [producerId], references: [id], onDelete: SetNull)
+  allowedVegetables GardenVegetable[]
+  leases       Garden[]
+
+  @@index([producerId])
+}
+
+// Many-to-many for template allowed vegetables
+model GardenVegetable {
+  id            String          @id @default(cuid())
+  templateId    String
+  vegetableId   String
+
+  template      GardenTemplate  @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  vegetable     Vegetable       @relation(fields: [vegetableId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, vegetableId])
+  @@index([templateId])
+  @@index([vegetableId])
+}
+
+model Activity {
+  id        String       @id @default(cuid())
+  gardenId  String
+  userId    String?      @db.Uuid
+  type      ActivityType
+  date      DateTime
+  comment   String?
+  imageUrl  String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime?
+
+  garden    Garden       @relation(fields: [gardenId], references: [id], onDelete: Cascade)
+  user      User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([gardenId])
+  @@index([userId])
+}
+
+model ChatSession {
+  id        String   @id @default(cuid())
+  userId    String   @db.Uuid
+  producerId String?
+  gardenId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime?
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  producer  Producer? @relation(fields: [producerId], references: [id], onDelete: Cascade)
+  garden    Garden   @relation(fields: [gardenId], references: [id], onDelete: Cascade)
+  messages  ChatMessage[]
+
+  @@unique([userId, producerId, gardenId])
+  @@index([userId])
+  @@index([producerId])
+  @@index([gardenId])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  sessionId String
+  sender    Sender
+  text      String
+  createdAt DateTime @default(now())
+  userId    String   @db.Uuid
+  gardenId  String
+
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  garden    Garden   @relation(fields: [gardenId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([userId])
+}
+
