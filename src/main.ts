@@ -151,7 +151,7 @@ async function bootstrap() {
 
   // Swagger API Documentation with Basic Auth
   // Use username from swagger config (default 'admin') to avoid inline secrets
-  const swaggerCfg = configService.get('swagger') as any;
+  const swaggerCfg = configService.get('swagger', { infer: true });
   app.use(
     [`/${DOCS_PATH}`],
     basicAuth({
