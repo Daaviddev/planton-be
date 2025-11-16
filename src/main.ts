@@ -11,8 +11,8 @@ import { AllExceptionsFilter } from '@filters/all-exception.filter';
 import { BadRequestExceptionFilter } from '@filters/bad-request-exception.filter';
 import { NotFoundExceptionFilter } from '@filters/not-found-exception.filter';
 import { ThrottlerExceptionsFilter } from '@filters/throttler-exception.filter';
-import validationExceptionFactory from '@filters/validation-exception-factory';
 import { ValidationExceptionFilter } from '@filters/validation-exception.filter';
+import validationExceptionFactory from '@filters/validation-exception-factory';
 import { TransformInterceptor } from '@interceptors/transform.interceptor';
 import {
   type INestApplication,
@@ -38,13 +38,8 @@ import { AppModule } from './modules/app/app.module';
 import { Environment, type EnvironmentVariables } from './types/global.types';
 
 async function bootstrap() {
-  console.log(`[Bootstrap] NODE_ENV: "${process.env.NODE_ENV}"`);
-  console.log(
-    `[Bootstrap] Environment.Development: "${Environment.Development}"`,
-  );
-
-  const isDev = (process.env.NODE_ENV || '').trim() === Environment.Development;
-  console.log(`[Bootstrap] isDev: ${isDev}`);
+  // Bootstrap info: use appConfig for environment values
+  let isDev = false;
 
   const app: INestApplication = await NestFactory.create(AppModule, {
     rawBody: true,
@@ -54,6 +49,7 @@ async function bootstrap() {
     app.get(ConfigService);
   const appConfig = configService.get('app', { infer: true });
   const swaggerConfig = configService.get('swagger');
+  isDev = appConfig.env === Environment.Development;
 
   // Security middleware
   app.use(
@@ -100,10 +96,18 @@ async function bootstrap() {
           // Handle requests with no origin
           if (!origin) return callback(null, false);
 
-          const allowedPatterns = [
-            /^https:\/\/([a-z0-9-]+\.)?hyper-gateway\.app$/i,
-            /^https:\/\/([a-z0-9-]+\.)?staging\.hyper-gateway\.app$/i,
-          ];
+          const allowedOrigins = appConfig.allowedOrigins || [];
+          const allowedPatterns = allowedOrigins.map((patternStr) => {
+            try {
+              return new RegExp(patternStr);
+            } catch {
+              // If not a valid regex, escape the string for exact match
+              return new RegExp(
+                `^${patternStr.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}$`,
+                'i',
+              );
+            }
+          });
 
           const isAllowed = allowedPatterns.some((pattern) =>
             pattern.test(origin),
@@ -123,7 +127,7 @@ async function bootstrap() {
         ],
       };
 
-  Logger.log(`Environment: ${process.env.NODE_ENV || 'undefined'}`);
+  Logger.log(`Environment: ${appConfig.env}`);
   Logger.log(`isDev: ${isDev}`);
 
   if (isDev) {

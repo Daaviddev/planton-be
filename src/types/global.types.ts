@@ -13,12 +13,23 @@ export interface AppConfig {
   loggerLevel: LogLevel[];
   env: Environment;
   version: string;
+  platformUrl: string;
+  senderEmail: string;
+  allowedOrigins: string[];
 }
 
 export interface EnvironmentVariables {
   app: AppConfig;
   swagger: {
     password: string;
+  };
+  jwt: {
+    secret: string;
+    expiresIn: string;
+    refreshExpiresIn: string;
+  };
+  auth: {
+    emailLoginEnabled: boolean;
   };
   NODE_ENV: Environment;
 }

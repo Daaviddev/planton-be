@@ -8,6 +8,8 @@ import { ConfigModule } from '@nestjs/config';
 import { UserModule } from '../user/user.module';
 import appConfig from '@config/app.config';
 import swaggerConfig from '@config/swagger.config';
+import jwtConfig from '@config/jwt.config';
+import authConfig from '@config/auth.config';
 import { validateEnv } from '@config/env.validation';
 import { ProtectedController } from './protected.controller';
 import { AppController } from './app.controller';
@@ -27,8 +29,8 @@ import { ChatSessionsModule } from '@modules/chat-sessions/chat-sessions.module'
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: [`.env.${process.env.NODE_ENV || 'development'}`],
-      load: [appConfig, swaggerConfig],
+      envFilePath: ['.env'],
+      load: [appConfig, swaggerConfig, jwtConfig, authConfig],
       validate: validateEnv,
     }),
 
