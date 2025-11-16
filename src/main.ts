@@ -75,8 +75,18 @@ async function bootstrap() {
           origin: string,
           callback: (err: Error | null, allow?: boolean) => void,
         ) => {
-          // If no origin is provided (server-to-server or curl), allow by default
-          if (!origin) return callback(null, true);
+          // If no origin is provided (server-to-server or curl), allow only if configured.
+          // This behavior is controlled by appConfig.allowNoOrigin (default: true).
+          if (!origin) {
+            if (appConfig.allowNoOrigin !== false) {
+              // Allow no-origin requests (server-to-server, curl) if enabled
+              return callback(null, true);
+            } else {
+              // Reject no-origin requests if disabled
+              Logger.warn('CORS: No-origin request rejected (allowNoOrigin=false)');
+              return callback(new Error('No-origin requests are not allowed by CORS'), false);
+            }
+          }
 
           const allowedOrigins = appConfig.allowedOrigins || [];
           const allowedPatterns = allowedOrigins.map((patternStr) => {
