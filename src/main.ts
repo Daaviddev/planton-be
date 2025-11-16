@@ -75,26 +75,16 @@ async function bootstrap() {
           origin: string,
           callback: (err: Error | null, allow?: boolean) => void,
         ) => {
-          // If no origin is provided (server-to-server or curl), allow only if configured.
-          // This behavior is controlled by appConfig.allowNoOrigin (default: true).
-          if (!origin) {
-            if (appConfig.allowNoOrigin !== false) {
-              // Allow no-origin requests (server-to-server, curl) if enabled
-              return callback(null, true);
-            } else {
-              // Reject no-origin requests if disabled
-              Logger.warn('CORS: No-origin request rejected (allowNoOrigin=false)');
-              return callback(new Error('No-origin requests are not allowed by CORS'), false);
-            }
-          }
+          // If no origin is provided (server-to-server or curl), allow by default
+          if (!origin) return callback(null, true);
 
           const allowedOrigins = appConfig.allowedOrigins || [];
           const allowedPatterns = allowedOrigins.map((patternStr) => {
             try {
               // If the config entry is a valid regex, use it directly
               return new RegExp(patternStr);
-            } catch (e) {
-              Logger.debug(`Pattern '${patternStr}' is not a valid regex, treating as literal string`);
+            } catch {
+              // If not a valid regex, escape the string for exact match
               return new RegExp(
                 `^${patternStr.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}$`,
                 'i',
@@ -161,7 +151,7 @@ async function bootstrap() {
 
   // Swagger API Documentation with Basic Auth
   // Use username from swagger config (default 'admin') to avoid inline secrets
-  const swaggerCfg = configService.get('swagger', { infer: true });
+  const swaggerCfg = configService.get('swagger') as any;
   app.use(
     [`/${DOCS_PATH}`],
     basicAuth({
@@ -187,16 +177,8 @@ async function bootstrap() {
     app,
     swaggerOptions,
   );
-
-  SwaggerModule.setup(DOCS_PATH, app, document, {
-    swaggerOptions: {
-      // If set to true, it persists authorization data,
-      // and it would not be lost on browser close/refresh
-      persistAuthorization: true,
-    },
-  });
-
   // Apply a relaxed CSP for the Swagger docs route only (allow inline scripts/styles necessary for Swagger UI)
+  // NOTE: must be applied BEFORE SwaggerModule.setup() so middleware runs prior to the route handler
   app.use(
     `/${DOCS_PATH}`,
     helmet({
@@ -211,6 +193,14 @@ async function bootstrap() {
       },
     }),
   );
+
+  SwaggerModule.setup(DOCS_PATH, app, document, {
+    swaggerOptions: {
+      // If set to true, it persists authorization data,
+      // and it would not be lost on browser close/refresh
+      persistAuthorization: true,
+    },
+  });
 
   app.useGlobalInterceptors(new TransformInterceptor());
 
