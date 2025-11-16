@@ -48,30 +48,12 @@ async function bootstrap() {
   const configService: ConfigService<EnvironmentVariables, true> =
     app.get(ConfigService);
   const appConfig = configService.get('app', { infer: true });
-  const swaggerConfig = configService.get('swagger');
   isDev = appConfig.env === Environment.Development;
+  // Configure Nest logger early so subsequent logs use the configured logger
+  app.useLogger(appConfig.loggerLevel);
 
-  // Security middleware
-  app.use(
-    helmet({
-      crossOriginEmbedderPolicy: false,
-      contentSecurityPolicy: {
-        directives: {
-          imgSrc: [
-            `'self'`,
-            'data:',
-            'apollo-server-landing-page.cdn.apollographql.com',
-          ],
-          scriptSrc: [`'self'`, `https: 'unsafe-inline'`],
-          manifestSrc: [
-            `'self'`,
-            'apollo-server-landing-page.cdn.apollographql.com',
-          ],
-          frameSrc: [`'self'`, 'sandbox.embed.apollographql.com'],
-        },
-      },
-    }),
-  );
+  // Security middleware - apply strict defaults globally
+  app.use(helmet());
 
   // CORS configuration
   const corsOptions = isDev
@@ -93,12 +75,13 @@ async function bootstrap() {
           origin: string,
           callback: (err: Error | null, allow?: boolean) => void,
         ) => {
-          // Handle requests with no origin
-          if (!origin) return callback(null, false);
+          // If no origin is provided (server-to-server or curl), allow by default
+          if (!origin) return callback(null, true);
 
           const allowedOrigins = appConfig.allowedOrigins || [];
           const allowedPatterns = allowedOrigins.map((patternStr) => {
             try {
+              // If the config entry is a valid regex, use it directly
               return new RegExp(patternStr);
             } catch {
               // If not a valid regex, escape the string for exact match
@@ -112,6 +95,7 @@ async function bootstrap() {
           const isAllowed = allowedPatterns.some((pattern) =>
             pattern.test(origin),
           );
+
           callback(
             isAllowed ? null : new Error('Not allowed by CORS'),
             isAllowed,
@@ -135,6 +119,7 @@ async function bootstrap() {
   } else {
     Logger.log('Enabling CORS for production with restricted origins');
   }
+
   app.enableCors(corsOptions);
 
   app.use(cookieParser());
@@ -164,16 +149,15 @@ async function bootstrap() {
     }),
   );
 
-  // Logger configuration
-  app.useLogger(appConfig.loggerLevel);
-
   // Swagger API Documentation with Basic Auth
+  // Use username from swagger config (default 'admin') to avoid inline secrets
+  const swaggerCfg = configService.get('swagger') as any;
   app.use(
     [`/${DOCS_PATH}`],
     basicAuth({
       challenge: true,
       users: {
-        admin: swaggerConfig.password,
+        [swaggerCfg.username]: swaggerCfg.password,
       },
     }),
   );
@@ -201,6 +185,22 @@ async function bootstrap() {
       persistAuthorization: true,
     },
   });
+
+  // Apply a relaxed CSP for the Swagger docs route only (allow inline scripts/styles necessary for Swagger UI)
+  app.use(
+    `/${DOCS_PATH}`,
+    helmet({
+      crossOriginEmbedderPolicy: false,
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", 'https:'],
+          styleSrc: ["'self'", "'unsafe-inline'", 'https:'],
+          imgSrc: ["'self'", 'data:'],
+        },
+      },
+    }),
+  );
 
   app.useGlobalInterceptors(new TransformInterceptor());
 

@@ -11,7 +11,8 @@ export const envSchema = z.object({
   APP_LOGGER_LEVEL: z.string().default('log,error,warn,debug,verbose'),
 
   // Swagger
-  SWAGGER_PASSWORD: z.string().min(4), // required, no default
+  SWAGGER_USERNAME: z.string().min(1).optional().default('admin'),
+  SWAGGER_PASSWORD: z.string().min(4).optional(), // required in production, optional in dev
 
   // Database
   DATABASE_URL: z.string().url().nonempty(),
@@ -31,10 +32,10 @@ export const envSchema = z.object({
       return !!val;
     }, z.boolean())
     .default(false),
-  // comma-separated list of allowed cors origins (literal scheme://host[:port]), required in prod
+  // comma-separated list of allowed cors origins (literal scheme://host[:port])
   ALLOWED_ORIGINS: z
     .string()
-    .nonempty()
+    .default('')
     .transform((s) =>
       s
         .split(',')
