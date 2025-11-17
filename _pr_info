@@ -1,0 +1,2 @@
+title: chore(pr1): migrate Activities to shared contracts (pilot)
+body: Isolating Activities contract migration and tests from combined PR for focused review.

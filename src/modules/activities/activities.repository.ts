@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../services/prisma.service';
 import type { Activity, Prisma } from '@prisma/client';
+import type { IActivitiesRepository } from '../../domain/contracts/activities.contract';
 
 @Injectable()
-export class ActivitiesRepository {
+export class ActivitiesRepository implements IActivitiesRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(data: Prisma.ActivityCreateInput): Promise<Activity> {
