@@ -1,8 +1,6 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-
 import { UserService } from './user.service';
-
-// Import the repository class
+import { USERS_REPOSITORY } from '../../domain/contracts';
 
 describe('UserService', () => {
   let service: UserService;
@@ -12,7 +10,7 @@ describe('UserService', () => {
       providers: [
         UserService,
         {
-          provide: 'UserRepository', // Use the string token that matches the @Inject in UserService
+          provide: USERS_REPOSITORY,
           useValue: {
             findAll: jest.fn(),
             findOne: jest.fn(),

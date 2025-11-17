@@ -66,7 +66,9 @@ describe('env validation', () => {
       ALLOWED_ORIGINS: 'http://localhost:5173',
     } as Record<string, unknown>;
 
-    expect(() => validateEnv(env)).toThrow();
+    // In development SWAGGER_PASSWORD is optional (only required in production),
+    // so validation should NOT throw when it's missing.
+    expect(() => validateEnv(env)).not.toThrow();
   });
 
   test('should throw in production when ALLOWED_ORIGINS is missing', () => {
