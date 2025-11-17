@@ -4,15 +4,16 @@ import { UserController } from './user.controller';
 import { UserRepository } from './user.repository';
 import { PrismaModule } from '../../services/prisma.module';
 import { ProducersModule } from '../producers/producers.module';
+import { USERS_REPOSITORY } from '../../domain/contracts';
 
 @Module({
   imports: [PrismaModule, ProducersModule],
   controllers: [UserController],
-  exports: [UserService, 'UserRepository'],
+  exports: [UserService, USERS_REPOSITORY],
   providers: [
     UserService,
     {
-      provide: 'UserRepository',
+      provide: USERS_REPOSITORY,
       useClass: UserRepository,
     },
   ],
