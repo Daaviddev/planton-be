@@ -2,9 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../services/prisma.service';
 import type { Vegetable, Prisma } from '@prisma/client';
 import { PlotStatus } from '@prisma/client';
+import type { IVegetablesRepository } from '../../domain/contracts/vegetables.contract';
 
 @Injectable()
-export class VegetablesRepository {
+export class VegetablesRepository implements IVegetablesRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(data: Prisma.VegetableCreateInput): Promise<Vegetable> {
