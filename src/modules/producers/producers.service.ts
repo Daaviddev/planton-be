@@ -1,9 +1,13 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import type { Producer } from '@prisma/client';
+import { PRODUCERS_REPOSITORY } from '../../domain/contracts';
+import type { IProducersRepository } from '../../domain/contracts/producers.contract';
 
 @Injectable()
 export class ProducersService {
-  constructor(@Inject('ProducersRepository') private readonly repo: any) {}
+  constructor(
+    @Inject(PRODUCERS_REPOSITORY) private readonly repo: IProducersRepository,
+  ) {}
 
   async create(data: Partial<Producer>): Promise<Producer> {
     return this.repo.create(data);
