@@ -1,0 +1,1 @@
+chore(pr1): migrate Activities to shared contracts (pilot)
